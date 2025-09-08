@@ -1,0 +1,179 @@
+{% extends 'base.html' %}
+{% block title %}Escala Mensal - {{ escala.unidade.nome }}{% endblock %}
+
+{% block content %}
+<style>
+    table {
+        border-collapse: collapse;
+        font-size: 12px;
+        width: 100%;
+        text-align: center;
+    }
+    th, td {
+        border: 1px solid black;
+        padding: 2px;
+    }
+    thead th {
+        background-color: #4CAF50;
+        color: white;
+    }
+    tbody td {
+        background-color: #f9f9f9;
+    }
+    .totals td, .totals th {
+        background-color: #ffff99;
+        font-weight: bold;
+    }
+    .legend th {
+        background-color: #e0e0e0;
+    }
+</style>
+
+<table>
+    <thead>
+        <tr>
+            <th colspan="6">DIVISÃO/SETOR/UNIDADE: {{ escala.unidade.nome }} </th>
+            
+            <th colspan="2">MÊS: {{ escala.mes }}</th>
+            <th colspan="2">ANO: {{ escala.ano }}</th>
+            <th colspan="{{ days|length }}">QUADRO MENSAL</th>
+        </tr>
+        <tr>
+            <th>NOME COMPLETO</th>
+            <th>SIAPE</th>
+            <th>COREN/MA</th>
+            <th>CATEGORIA</th>
+            <th>VÍNCULO</th>
+            <th>C.H.</th>
+            <th colspan="2">INTERVALO</th>
+            {% for day in days %}
+                <th>{{ day.day }}</th>
+            {% endfor %}
+            <th>TOTAL</th>
+        </tr>
+        <tr>
+            <th colspan="8">PORTARIA: {{ escala.unidade.portaria }}</th>
+            
+            
+            {% for day in days %}
+                <th>{% with day|date:"w" as weekday %}
+                    {% if weekday == "0" %}DOM
+                    {% elif weekday == "1" %}SEG
+                    {% elif weekday == "2" %}TER
+                    {% elif weekday == "3" %}QUA
+                    {% elif weekday == "4" %}QUI
+                    {% elif weekday == "5" %}SEX
+                    {% elif weekday == "6" %}SAB
+                    {% endif %}
+                {% endwith %}</th>
+            {% endfor %}
+            <th></th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for atribuicao1 in atribuicoes %}
+            <tr>
+                <td>{{ atribuicao.funcionario.nome_completo }}</td>
+                <td>{{ atribuicao.funcionario.siape }}</td>
+                <td>{{ atribuicao.funcionario.registro_conselho }}</td>
+                <td>{{ atribuicao.funcionario.cargo }}</td>
+                <td>{{ atribuicao.funcionario.vinculo }}</td>
+                <td>{{ atribuicao.funcionario.ch_semanal }}</td>
+                <td colspan="2"></td>
+                {% for day in days %}
+                    <td> 
+                        {% if day.day == atribuicao.dia %}
+                            {{ atribuicao.tipo_turno.codigo }}
+                        {% endif %}
+                    </td>
+                {% endfor %}
+                <td>{{ atribuicao.total_ch }}h</td>
+            </tr>
+        {% endfor %}
+    </tbody>
+    <tbody>
+        {% for item in funcionarios %}
+            {% with func=item.funcionario %}
+            <tr>
+                <td>{{ func.nome_completo }}</td>
+                <td>{{ func.siape }}</td>
+                <td>{{ func.registro_conselho }}</td>
+                <td>{{ func.cargo }}</td>
+                <td>{{ func.vinculo }}</td>
+                <td>{{ func.ch_semanal }}h</td>
+                <td colspan="2">-</td>
+                {% for turno in item.dias_list %}
+                    <td>{{ turno }}</td>
+                {% endfor %}
+                <td>{{ item.total_horas }}h</td>
+                
+
+            </tr>
+            {% endwith %}
+        {% endfor %}
+    </tbody>
+    <tfoot>
+        <tr class="totals">
+            <th colspan="8">TOTAL PROFISSIONAIS MATUTINO</th>
+            {% for total in totals.matutino %}
+                <td>{{ total }}</td>
+            {% endfor %}
+            <td></td>
+        </tr>
+        <tr class="totals">
+            <th colspan="8">TOTAL PROFISSIONAIS VESPERTINO</th>
+            {% for total in totals.vespertino %}
+                <td>{{ total }}</td>
+            {% endfor %}
+            <td></td>
+        </tr>
+        <tr class="totals">
+            <th colspan="8">TOTAL PROFISSIONAIS NOTURNO</th>
+            {% for total in totals.noturno %}
+                <td>{{ total }}</td>
+            {% endfor %}
+            <td></td>
+        </tr>
+    </tfoot>
+</table>
+
+<div class="legend mt-3">
+    <table>
+        <tr>
+            <th>Cargos</th>
+            <th>Vínculos</th>
+            <th>Horários</th>
+            <th>Intervalo Intrajornada</th>
+            <th>Afastamentos</th>
+        </tr>
+        <tr>
+            <td>TE = Técnico em Enfermagem</td>
+            <td>EBSERH = Empresa Brasileira de Serviços Hospitalares</td>
+            <td>M6 = 07:00 às 13:00</td>
+            <td>1h</td>
+            <td>FO = Folga</td>
+        </tr>
+        <tr>
+            <td>ENF = Enfermeiro</td>
+            <td>UFMA = Universidade Federal do Maranhão</td>
+            <td>T6 = 13:00 às 19:00</td>
+            <td></td>
+            <td>FE = Férias</td>
+        </tr>
+        <tr>
+            <td>AE = Auxiliar de Enfermagem</td>
+            <td>MS = Ministério da Saúde</td>
+            <td>N2 = 19:00 às 07:00</td>
+            <td></td>
+            <td>FD = Feriado</td>
+        </tr>
+    </table>
+</div>
+
+{% if escala.observacoes %}
+<div class="legend mt-3">
+    <p>Observações: {{ escala.observacoes }}</p>
+</div>
+{% endif %}
+
+{% endblock %}

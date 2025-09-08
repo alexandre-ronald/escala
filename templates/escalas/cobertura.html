@@ -1,0 +1,98 @@
+{% extends 'base.html' %}
+{% block title %}Cobertura - {{ nome_unidade }}{% endblock %}
+{% block content %}
+
+<div class="container">
+
+  <div class="card shadow-sm mb-2">
+    <div class="card-body">
+      <form method="post" class="row g-3">
+        {% csrf_token %}
+        <div class="col-md-2">
+          <label class="form-label">Mês</label>
+          <select name="mes" class="form-select">
+            {% for i, nome in meses %}
+              <option value="{{ i }}" {% if mes == i %}selected{% endif %}>{{ nome }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-md-2">
+          <label class="form-label">Ano</label>
+          <select name="ano" class="form-select">
+            {% for a in anos %}
+              <option value="{{ a }}" {% if ano == a %}selected{% endif %}>{{ a }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-md-6">
+          <label class="form-label">Unidade</label>
+          <select name="unidade" class="form-select">
+            <option value="">Selecione a unidade</option>
+            {% for unidade in unidades %}
+              <option value="{{ unidade.id }}" {% if unidade.id == unidade_selecionada %}selected{% endif %}>
+                {{ unidade.nome }}
+              </option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-md-2 d-flex align-items-end">
+          <button type="submit" class="btn btn-primary w-100">Filtrar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+  <div class="card shadow-sm mb-2">
+    <div class="card-body">
+
+      <!-- Cabeçalho com dias da semana -->
+      <div class="row fw-bold text-center mb-2">
+        <div class="col"> DOMINGO</div>
+        <div class="col">SEGUNDA-FEIRA</div>
+        <div class="col">TERÇA-FEIRA</div>
+        <div class="col">QUARTA-FEIRA</div>
+        <div class="col">QUINTA-FEIRA</div>
+        <div class="col">SEXTA-FEIRA</div>
+        <div class="col">SÁBADO</div>
+      </div>
+
+      <!-- Linhas da semana -->
+      {% for semana in dias_mes %}
+        <div class="row">
+          {% for dia in semana %}
+            <div class="col p-1">
+              <div class="card h-100
+                  {% if dia.data.month != mes %}
+                    bg-light text-muted
+                  {% elif dia.data.weekday == 5 or dia.data.weekday == 6 %}
+                    card-danger text-white
+                  {% else %}
+                    card-primary text-white
+                  {% endif %}">
+                  <div class="card-header text-center py-2 border-0 
+                    {% if dia.data.month != mes %} bg-light text-muted {% else %} bg-transparent {% endif %}
+                  ">
+                  <h6 class="m-0 fw-bold ">{{ dia.data.day }}</h6>
+                  <small class="text-uppercase">{{ dia.nome_dia }}</small>
+                </div>
+               
+                <div class="card-body p-1 small">
+                  {% if dia.nomes %}
+                    {% for nome in dia.nomes %}
+                      <span class="text-sm">{{ nome }}</span>        
+                    {% endfor %}
+                  {% else %}
+                    <div class="text-muted fst-italic"></div>
+                  {% endif %}
+                </div>
+              </div>
+            </div>
+          {% endfor %}
+        </div>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+  
+  
+</div>
+{% endblock %}
