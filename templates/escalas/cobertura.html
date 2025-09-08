@@ -68,17 +68,30 @@
                   {% else %}
                     card-primary text-white
                   {% endif %}">
-                  <div class="card-header text-center py-2 border-0 
-                    {% if dia.data.month != mes %} bg-light text-muted {% else %} bg-transparent {% endif %}
-                  ">
-                  <h6 class="m-0 fw-bold ">{{ dia.data.day }}</h6>
+                  
+                  <div class="card-header text-center py-2 border-2
+                    {% if dia.data.month != mes %} bg-light text-muted {% else %} text-muted {% endif %} ">
+                  
+                    <span class="avatar-title bg-transparent 
+                      {% if dia.data.month != mes %}
+                        text-dark
+                      {%endif%} ">
+                      {{ dia.data.day }}
+                    </span>
                   <small class="text-uppercase">{{ dia.nome_dia }}</small>
                 </div>
-               
                 <div class="card-body p-1 small">
                   {% if dia.nomes %}
                     {% for nome in dia.nomes %}
-                      <span class="text-sm">{{ nome }}</span>        
+                      <span class="badge 
+                        {% if dia.data.month != mes %}
+                          bg-light text-muted
+                        {% elif dia.data.weekday == 5 or dia.data.weekday == 6 %}
+                          text-bg-danger
+                        {% else %}
+                          text-bg-primary
+                        {% endif %}"
+                      >{{ nome }}</span>        
                     {% endfor %}
                   {% else %}
                     <div class="text-muted fst-italic"></div>
@@ -92,7 +105,5 @@
     </div>
   </div>
 </div>
-  
-  
 </div>
 {% endblock %}
