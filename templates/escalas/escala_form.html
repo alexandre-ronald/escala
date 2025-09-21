@@ -1,0 +1,439 @@
+
+{% extends 'base.html' %}
+{% load escala_tags %}
+{% block title %}Cadastrar Escala{% endblock %}
+{% block content %}
+    <div class="content-wrapper">
+        <div class="content">
+            <div class="container-fluid">
+                <form method="get" id="form-filtro">
+                    {% csrf_token %}
+                    <div class="card">
+                        <div class="card-body">
+                            {% if messages %}
+                                {% for message in messages %}
+                                    <div class="alert alert-success alert-dismissible fade show" role="alert">
+                                        {{ message }}
+                                        <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                                            <span aria-hidden="true">&times;</span>
+                                        </button>
+                                    </div>
+                                {% endfor %}
+                            {% endif %}
+                            <div class="row align-items-end">
+                                <div class="col-md-5">
+                                    <div class="form-group">
+                                        <label for="unidade">Unidade:</label>
+                                        <select name="unidade" id="unidade" class="form-select" onchange="this.form.submit()">
+                                            <option value="">Selecione uma unidade</option>
+                                            {% for unidade in unidades %}
+                                                <option value="{{ unidade.id }}" {% if request.GET.unidade == unidade.id|stringformat:"s" %}selected{% endif %}>{{ unidade.nome }}</option>
+                                            {% endfor %}
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="col-md-3">
+                                    <div class="form-group">
+                                        <label for="cargo">Cargo:</label>
+                                        <select name="cargo" id="cargo" class="form-select" onchange="this.form.submit()">
+                                            <option value="">Selecione um cargo</option>
+                                            <option value="Enf" {% if request.GET.cargo == "Enf" %}selected{% endif %}>Enfermeiro</option>
+                                            <option value="Tec" {% if request.GET.cargo == "Tec" %}selected{% endif %}>Técnico de Enfermagem</option>
+                                            <option value="Aux" {% if request.GET.cargo == "Aux" %}selected{% endif %}>Auxiliar de Enfermagem</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="col-md-2">
+                                    <div class="form-group">
+                                        <label for="mes">Mês:</label>
+                                        <select name="mes" id="mes" class="form-select" onchange="this.form.submit()">
+                                            <option value="">Selecione um mês</option>
+                                            {% for m in "1,2,3,4,5,6,7,8,9,10,11,12"|split:"," %}
+                                                <option value="{{ m }}" {% if mes_atual == m|add:0 %}selected{% endif %}>{{ m|month_name }}</option>
+                                            {% endfor %}
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="col-md-1">
+                                    <div class="form-group">
+                                        <label for="ano">Ano:</label>
+                                        <input type="number" name="ano" id="ano" class="form-control" value="{{ ano_atual }}" min="2025" max="2030" onchange="this.form.submit()">
+                                    </div>
+                                </div>
+                                <div class="col-md-1">
+                                    <div class="form-group">
+                                        <button type="submit" class="btn btn-primary">Filtrar</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+                <form method="post" action="{% url 'cadastrar_escala' %}" id="escala-form">
+                    {% csrf_token %}
+                    <div class="card">
+                        <div class="card-body">
+                            
+                            <div class="table-responsive">
+                                <table class="table align-middle table-sm table-bordered table-nowrap mb-0" id="escalaTable">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th style="min-width: 250px; position: sticky; left: 0; background-color: #f7f9fa; z-index: 1;">Nome Completo</th>
+                                            <th style="min-width: 100px;">SIAPE</th>
+                                            <th style="min-width: 100px;">Registro Conselho</th>
+                                            <th style="min-width: 80px;">Cargo</th>
+                                            <th style="min-width: 80px;">Vínculo</th>
+                                            <th style="min-width: 80px; text-align: center;">C.H. Semanal</th>
+                                            {% for dia in dias %}
+                                                {% with dia_split=dia|split:"/" %}
+                                                    <th style="min-width: 50px; text-align: center;" id="dia_{{ dia_split.0 }}">
+                                                        {{ dia_split.0 }}<br>
+                                                        <span class="dia-semana" {% if dia_split.0|weekday:mes_atual|add:0 == 0 or dia_split.0|weekday:mes_atual|add:0 == 6 %}style="color: red;" class="sabado-domingo"{% endif %}>
+                                                            {{ dia_split.0|weekday:mes_atual|short_weekday }}
+                                                        </span>
+                                                    </th>
+                                                {% endwith %}
+                                            {% endfor %}
+                                            <th style="min-width: 100px; position: sticky; right: 0; text-align: center; background-color: #f7f9fa; z-index: 1;">Total C.H. Mensal</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="funcionarioRows">
+                                        {% for func in funcionarios %}
+                                            <tr>
+                                                <td style="min-width: 250px;">{{ func.nome_completo }}</td>
+                                                <td style="text-align: center;">{{ func.siape }}</td>
+                                                <td style="text-align: center;">{{ func.registro_conselho|default:"" }}</td>
+                                                <td style="text-align: center;">{{ func.cargo }}</td>
+                                                <td style="text-align: center;">{{ func.vinculo }}</td>
+                                                <td style="text-align: center;">{{ func.ch_semanal }}</td>
+                                                {% for dia in dias %}
+                                                    {% with dia_split=dia|split:"/" %}
+                                                        <td>
+                                                            <select name="turno_{{ func.id }}_{{ dia_split.0|day_number }}"
+                                                                    class="form-control form-control-sm turno-select" 
+                                                                    data-func-id="{{ func.id }}"
+                                                                    onchange="calcularTotal('{{ func.id }}'); atualizarTotaisPeriodo('{{ dia_split.0|day_number }}');">
+                                                                <option value="">Selecione</option>
+                                                                {% for turno in turnos %}
+                                                                    <option value="{{ turno.id }}" data-horas="{{ turno.horas }}">{{ turno.sigla }}</option>
+                                                                {% endfor %}
+                                                            </select>
+                                                        </td>
+                                                    {% endwith %}
+                                                {% endfor %}
+                                                <td style="text-align: center;" id="total_{{ func.id }}">0h</td>
+                                            </tr>
+                                        {% endfor %}
+                                        <tr class="total-row">
+                                            <td style="font-weight: bold; text-align: right; background-color: #f7f9fa;">Total Profissionais Matutino</td>
+                                            <td colspan="5"></td>
+                                            {% for dia in dias %}
+                                                {% with dia_split=dia|split:"/" %}
+                                                    <td style="text-align: center; background-color: #f7f9fa;" id="total_matutino_{{ dia_split.0|day_number }}">0</td>
+                                                {% endwith %}
+                                            {% endfor %}
+                                            <td></td>
+                                        </tr>
+                                        <tr class="total-row">
+                                            <td style="font-weight: bold; text-align: right; background-color: #f7f9fa;">Total Profissionais Vespertino</td>
+                                            <td colspan="5"></td>
+                                            {% for dia in dias %}
+                                                {% with dia_split=dia|split:"/" %}
+                                                    <td style="text-align: center; background-color: #f7f9fa;" id="total_vespertino_{{ dia_split.0|day_number }}">0</td>
+                                                {% endwith %}
+                                            {% endfor %}
+                                            <td></td>
+                                        </tr>
+                                        <tr class="total-row">
+                                            <td style="font-weight: bold; text-align: right; background-color: #f7f9fa;">Total Profissionais Noturno</td>
+                                            <td colspan="5"></td>
+                                            {% for dia in dias %}
+                                                {% with dia_split=dia|split:"/" %}
+                                                    <td style="text-align: center; background-color: #f7f9fa;" id="total_noturno_{{ dia_split.0|day_number }}">0</td>
+                                                {% endwith %}
+                                            {% endfor %}
+                                            <td></td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                            <div class="col-md-12 mt-2">
+                                <div class="form-group">
+                                    <label for="observacoes">Observações:</label>
+                                    <textarea name="observacoes" id="observacoes" class="form-control" rows="2"></textarea>
+                                </div>
+                            </div>
+                            <div class="row mt-3">
+                                <div class="col-md-12">
+                                    <button type="submit" class="btn btn-success">Salvar Escala</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+                <div class="modal fade" id="modalCarregando" tabindex="-1" aria-labelledby="modalCarregandoLabel" aria-hidden="true">
+                    <div class="modal-dialog modal-dialog-centered">
+                        <div class="modal-content text-center">
+                            <div class="modal-body">
+                                <div class="spinner-border text-primary mb-3" role="status">
+                                    <span class="visually-hidden">Carregando...</span>
+                                </div>
+                                <h5 class="modal-title" id="modalCarregandoLabel">Consultando Profissionais para a Escala...</h5>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <style>
+        .table-responsive {
+            overflow-x: auto;
+            overflow-y: auto;
+            max-height: 500px;
+        }
+        .table thead th {
+            position: sticky;
+            top: 0;
+            background-color: #f7f9fa;
+            z-index: 1;
+            text-align: center;
+            vertical-align: middle;
+        }
+        .table thead th:first-child,
+        .table tbody td:first-child,
+        .total-row td:first-child {
+            position: sticky;
+            left: 0;
+            background-color: #fff;
+            z-index: 0;
+            text-align: left;
+        }
+        .table thead th:last-child,
+        .table tbody td:last-child,
+        .total-row td:last-child {
+            position: sticky;
+            right: 0;
+            background-color: #fff;
+            z-index: 0;
+            text-align: center;
+        }
+        .table thead th:first-child,
+        .table thead th:last-child {
+            z-index: 2; /* Aumentado para garantir que o cabeçalho fique acima das linhas fixas */
+        }
+        .dia-semana {
+            font-size: 0.8em;
+            color: #666;
+        }
+        .sabado-domingo {
+            color: red;
+        }
+        .total-row {
+            text-align: center;
+            background-color: #f7f9fa;
+            font-weight: bold;
+            position: sticky;
+            z-index: 1; /* Garante que as linhas de totais fiquem acima do conteúdo rolável, mas abaixo do cabeçalho */
+        }
+        /* Fixar as últimas 3 linhas */
+        .total-row:nth-last-child(3) {
+            bottom: 4em; /* Ajuste conforme a altura da linha, para a penúltima linha */
+        }
+        .total-row:nth-last-child(2) {
+            bottom: 2em; /* Ajuste para a antepenúltima linha */
+        }
+        .total-row:nth-last-child(1) {
+            bottom: 0; /* Última linha fixada na base */
+        }
+    </style>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        const tipoTurnos = {
+            {% for turno in turnos %}
+                "{{ turno.id }}": { sigla: "{{ turno.sigla }}", horas: {{ turno.horas }} },
+            {% endfor %}
+        };
+        const turnosMatutino = ['M5', 'M6', 'M7'];
+        const turnosVespertino = ['T5', 'T6', 'TS'];
+        const turnosNoturno = ['N2', 'N8', 'D2'];
+
+        function getPeriodosFromSigla(sigla) {
+            if (!sigla) return [];
+            sigla = String(sigla).toUpperCase();
+            if (sigla.startsWith("N")) return ["noturno"];
+            if (sigla.startsWith("MT") || sigla.startsWith("D")) return ["matutino", "vespertino"];
+            if (sigla.startsWith("M")) return ["matutino"];
+            if (sigla.startsWith("T")) return ["vespertino"];
+            return [];
+        }
+
+        function calcularTotal(funcId) {
+            if (!funcId) {
+                console.error('funcId inválido:', funcId);
+                return;
+            }
+            let totalHoras = 0;
+            const selects = document.querySelectorAll(`[name^='turno_${funcId}_']`);
+            selects.forEach(select => {
+                const turnoId = select.value;
+                if (turnoId && tipoTurnos[turnoId]) {
+                    totalHoras += tipoTurnos[turnoId].horas;
+                }
+            });
+            const totalElement = document.getElementById(`total_${funcId}`);
+            if (totalElement) {
+                totalElement.textContent = `${totalHoras}h`;
+            } else {
+                console.error(`Elemento total_${funcId} não encontrado`);
+            }
+        }
+
+        function atualizarTotaisPeriodo(dia) {
+            console.log('Iniciando atualizarTotaisPeriodo para dia:', dia);
+
+            const tbody = document.getElementById('funcionarioRows');
+            if (!tbody) {
+                console.error('Elemento funcionarioRows não encontrado');
+                return;
+            }
+
+            const rows = Array.from(tbody.getElementsByTagName('tr'));
+            console.log('Número de linhas no tbody:', rows.length);
+
+            const periodos = ["matutino", "vespertino", "noturno"];
+            const fixedCols = 2;
+
+            let startIndex = rows.length - periodos.length;
+            if (startIndex < 0) {
+                console.error('Não há linhas de totais suficientes. Total de linhas:', rows.length);
+                startIndex = 0;
+            }
+
+            const ano = Number(document.getElementById('ano').value || {{ ano_atual }});
+            const mes = Number(document.getElementById('mes').value || {{ mes_atual }});
+            
+            // Validar o dia
+            if (!dia || isNaN(parseInt(dia))) {
+                return;
+            }
+            const diaNum = parseInt(dia);
+            console.log('Dia numérico:', diaNum);
+
+            const totalDias = new Date(ano, mes, 0).getDate();
+            const dias = Array.from({ length: totalDias }, (_, i) => i + 1);
+            console.log('Array de dias:', dias);
+
+            const diaIndex = dias.indexOf(diaNum);
+            console.log('diaIndex:', diaIndex);
+
+            if (diaIndex === -1) {
+                console.error(`Dia ${dia} inválido para o mês ${mes}/${ano}`);
+                return;
+            }
+
+            const cellIndex = fixedCols + diaIndex;
+
+            console.log('Índice da coluna (cellIndex):', cellIndex);
+
+            // Verificar todos os selects para depuração
+            const allSelects = document.querySelectorAll('select[name^="turno_"]');
+            console.log('Total de selects encontrados:', allSelects.length);
+            //allSelects.forEach(select => console.log('Nome do select:', select.name));
+
+            // Tentar encontrar selects para o dia
+            const selects = document.querySelectorAll(`[name$='_${diaNum}']`);
+            console.log('Selects encontrados para o dia:', selects.length);
+            //selects.forEach(select => console.log('Nome do select (diaNum):', select.name));
+
+            if (selects.length === 0) {
+                console.error('Nenhum select encontrado para o dia:', diaNum);
+                // Tentar formato alternativo com zero à esquerda
+                const diaFormatado = diaNum.toString().padStart(2, '0');
+                const selectsAlt = document.querySelectorAll(`[name$='_${diaFormatado}']`);
+                console.log('Selects encontrados para o dia formatado:', selectsAlt.length);
+                selectsAlt.forEach(select => console.log('Nome do select (alt):', select.name));
+                if (selectsAlt.length > 0) {
+                    selects = selectsAlt;
+                } else {
+                    console.error('Nenhum select encontrado para formatos:', [diaNum, diaFormatado]);
+                    return;
+                }
+            }
+
+            periodos.forEach((periodo, index) => {
+                console.log('Processando período:', periodo, 'Índice da linha:', startIndex + index);
+                const row = rows[startIndex + index];
+                if (!row) {
+                    console.warn(`Linha de total para período ${periodo} não encontrada`);
+                    return;
+                }
+                const cells = row.getElementsByTagName('td');
+
+                let total = 0;
+                selects.forEach(select => {
+                    const turnoId = select.value;
+                    console.log('Select:', select.name, 'Turno ID:', turnoId);
+                    if (turnoId && tipoTurnos[turnoId]?.sigla) {
+                        const periodosDoTurno = getPeriodosFromSigla(tipoTurnos[turnoId].sigla);
+                        console.log('Períodos do turno:', periodosDoTurno);
+                        if (periodosDoTurno.includes(periodo)) total++;
+                    }
+                });
+                console.log(`Dia: 1, diaIndex: ${diaIndex}, cellIndex: ${cellIndex}`);
+                
+                if (cells[cellIndex]) {
+                    cells[cellIndex].textContent = total;
+
+                    console.log(`Atualizado total para ${periodo}, dia ${dia}: ${total}`);
+                } else {
+                    console.warn(`Célula não encontrada para período ${periodo}, dia ${dia}, índice ${cellIndex}`);
+                }
+            });
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const formFiltro = document.getElementById('form-filtro');
+            if (formFiltro) {
+                formFiltro.addEventListener('submit', function(e) {
+                    const modal = new bootstrap.Modal(document.getElementById('modalCarregando'));
+                    modal.show();
+                });
+            } else {
+                console.error('Elemento form-filtro não encontrado');
+            }
+
+            document.querySelectorAll('.turno-select').forEach(select => {
+                select.addEventListener('change', function() {
+                    const funcId = this.dataset.funcId;
+                    const dia = this.name.split('_')[2]; // Extrai o dia do name (ex.: "1")
+                    console.log('Select mudou. funcId:', funcId, 'Dia:', dia);
+                    if (funcId) {
+                        calcularTotal(funcId);
+                    } else {
+                        console.error('funcId não encontrado no select:', this.name);
+                    }
+                    if (dia) {
+                        atualizarTotaisPeriodo(dia);
+                    } else {
+                        console.error('Dia não encontrado no name do select:', this.name);
+                    }
+                });
+            });
+
+            // Calcular totais iniciais
+            {% for func in funcionarios %}
+                calcularTotal('{{ func.id }}');
+            {% endfor %}
+            const ano = Number(document.getElementById('ano').value || {{ ano_atual }});
+            const mes = Number(document.getElementById('mes').value || {{ mes_atual }});
+            const totalDias = new Date(ano, mes, 0).getDate();
+            const dias = Array.from({ length: totalDias }, (_, i) => i + 1);
+            dias.forEach(dia => {
+                atualizarTotaisPeriodo(dia.toString());
+            });
+        });
+    </script>
+{% endblock %}

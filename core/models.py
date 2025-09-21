@@ -6,6 +6,7 @@ class Unidade(models.Model):
     nome = models.CharField(max_length=200)  # ex.: UNIDADE DE OBSTETRÍCIA - CCOG
     portaria = models.CharField(max_length=50, blank=True)  # ex.: 1192/2023
 
+<<<<<<< HEAD
 class TipoTurno(models.Model):
     codigo = models.CharField(max_length=10)  # ex.: M6, N2, FO
     descricao = models.CharField(max_length=100)  # ex.: Matutino 07:00-13:00
@@ -14,6 +15,19 @@ class TipoTurno(models.Model):
     duracao_horas = models.FloatField()  # ex.: 6.0
     periodo = models.CharField(max_length=20)  # matutino, vespertino, noturno, folga
 
+=======
+class Turno(models.Model):
+    sigla = models.CharField(max_length=10)  # ex.: M6, N2, FO
+    descricao = models.CharField(max_length=100)  # ex.: Matutino 07:00-13:00
+    hora_inicio = models.TimeField(null=True)
+    hora_fim = models.TimeField(null=True)
+    horas = models.FloatField()  # ex.: 6.0
+    periodo = models.CharField(max_length=20)  # matutino, vespertino, noturno, folga
+
+    def __str__(self):
+        return f"{self.sigla} - Horas {self.horas}"
+
+>>>>>>> ba04dbe (Atualiza template escala com totais por período e cálculo de horas)
 class Funcionario(models.Model):
     nome_completo = models.CharField(max_length=200)
     siape = models.CharField(max_length=20)
@@ -46,7 +60,11 @@ class AtribuicaoEscala(models.Model):
     escala = models.ForeignKey('Escala', on_delete=models.CASCADE)
     funcionario = models.ForeignKey('core.Funcionario', on_delete=models.CASCADE)
     dia = models.PositiveSmallIntegerField()
+<<<<<<< HEAD
     tipo_turno = models.ForeignKey(TipoTurno, on_delete=models.CASCADE)
+=======
+    tipo_turno = models.ForeignKey(Turno, on_delete=models.CASCADE)
+>>>>>>> ba04dbe (Atualiza template escala com totais por período e cálculo de horas)
     # Campo para carga horária mensal (calculado)
     ch_mensal = models.FloatField(null=True, blank=True)
 

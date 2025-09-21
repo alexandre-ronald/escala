@@ -1,0 +1,379 @@
+{% extends 'base.html' %}
+{% block title %}Cadastrar Escala{% endblock %}
+{% block content %}
+    <div class="content-wrapper">
+        <div class="content">
+            <div class="container-fluid">
+                <form method="post" action="{% url 'cadastrar_escala' %}" id="escalaForm">
+                    {% csrf_token %}
+                    <div class="card">
+                        <div class="card-body">
+                            {% if messages %}
+                                {% for message in messages %}
+                                    <div class="alert alert-success alert-dismissible fade show" role="alert">
+                                        {{ message }}
+                                        <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                                            <span aria-hidden="true">&times;</span>
+                                        </button>
+                                    </div>
+                                {% endfor %}
+                            {% endif %}
+
+                            
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label for="unidade">Unidade:</label>
+                                        <select name="unidade" id="unidade" class="form-select" onchange="filtrarFuncionarios()">
+                                            <option value="">Selecione uma unidade</option>
+                                            {% for unidade in unidades %}
+                                                <option value="{{ unidade.id }}">{{ unidade.nome }}</option>
+                                            {% endfor %}
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="col-md-3">
+                                    <div class="form-group">
+                                        <label for="cargo">Cargo:</label>
+                                        <select name="cargo" id="cargo" class="form-select" onchange="filtrarFuncionarios()">
+                                            <option value="">Selecione um cargo</option>
+                                            {% for cargo in cargos_unicos %}
+                                                <option value="{{ cargo }}">{{ cargo }}</option>
+                                            {% endfor %}
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="col-md-2">
+                                    <div class="form-group">
+                                        <label for="mes">Mês:</label>
+                                        <select name="mes" id="mes" class="form-select" onchange="atualizarTabela()">
+                                            <option value="">Selecione um mês</option>
+                                            <option value="1" {% if mes_atual == 1 %}selected{% endif %}>Janeiro</option>
+                                            <option value="2" {% if mes_atual == 2 %}selected{% endif %}>Fevereiro</option>
+                                            <option value="3" {% if mes_atual == 3 %}selected{% endif %}>Março</option>
+                                            <option value="4" {% if mes_atual == 4 %}selected{% endif %}>Abril</option>
+                                            <option value="5" {% if mes_atual == 5 %}selected{% endif %}>Maio</option>
+                                            <option value="6" {% if mes_atual == 6 %}selected{% endif %}>Junho</option>
+                                            <option value="7" {% if mes_atual == 7 %}selected{% endif %}>Julho</option>
+                                            <option value="8" {% if mes_atual == 8 %}selected{% endif %}>Agosto</option>
+                                            <option value="9" {% if mes_atual == 9 %}selected{% endif %}>Setembro</option>
+                                            <option value="10" {% if mes_atual == 10 %}selected{% endif %}>Outubro</option>
+                                            <option value="11" {% if mes_atual == 11 %}selected{% endif %}>Novembro</option>
+                                            <option value="12" {% if mes_atual == 12 %}selected{% endif %}>Dezembro</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="col-md-1">
+                                    <div class="form-group">
+                                        <label for="ano">Ano:</label>
+                                        <input type="number" name="ano" id="ano" class="form-control" value="{{ ano_atual }}" min="2025" max="2030" onchange="atualizarTabela()">
+                                    </div>
+                                </div>
+                                <div class="col-md-12 mt-2">
+                                    <div class="form-group">
+                                        <label for="observacoes">Observações:</label>
+                                        <textarea name="observacoes" id="observacoes" class="form-control" rows="2"></textarea>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="row mt-3">
+                                <div class="col-md-12">
+                                    <button type="button" class="btn btn-primary" onclick="filtrarFuncionarios()">Filtrar</button>
+                                    <button type="submit" class="btn btn-success">Salvar Escala</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card">
+                        <div class="card-body">
+                            <div class="mt-4" id="tabelaFuncionarios">
+                                <div class="table-responsive"> <!-- Scroll horizontal -->
+                                    <table class="table align-middle table-nowrap mb=0" id="escalaTable">
+                                        <thead class="table-light">
+                                            <tr>
+                                                <th style="min-width: 250px; position: sticky; left: 0; background-color: #f7f9fa; z-index: 1;">Nome Completo</th>
+                                                <th style="min-width: 100px;">SIAPE</th>
+                                                <th style="min-width: 100px;">Classe</th>
+                                                <th style="min-width: 80px;">Cargo</th>
+                                                <th style="min-width: 80px;">Vínculo</th>
+                                                <th style="min-width: 80px; text-align: center;">C.H. Semanal</th>
+                                                {% for dia in dias %}
+                                                    <th style="min-width: 50px; text-align: center;" id="dia_{{ dia }}">{{ dia }}</th>
+                                                {% endfor %}
+                                                <th style="min-width: 100px; position: sticky; right: 0; text-align: center; background-color: #f7f9fa; z-index: 1;">Total C.H. Mensal</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="funcionarioRows"></tbody>
+                                        <tfoot class="table-light" id="funcionarioTotais"></tfoot>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+        <!-- /.content -->
+    </div>
+
+    <style>
+        /* Ajuste para garantir que as colunas fixas não sejam sobrepostas pelo scroll */
+        .table-responsive {
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+        .table thead th, .table tbody td {
+            position: relative;
+            padding: 5px; /* Ajuste para caber o texto */
+            vertical-align: middle; /* Centraliza verticalmente */
+            height: 30px; /* Altura mínima para centralização */
+        }
+        .table tbody td:first-child {
+            position: sticky;
+            left: 0;
+            background-color: #fff;
+            z-index: 1;
+        }
+        .table tbody td:last-child {
+            position: sticky;
+            right: 0;
+            background-color: #fff;
+            z-index: 1;
+        }
+        /* Estilo para o texto do dia da semana */
+        .dia-semana {
+            font-size: 0.8em;
+            color: #666;
+        }
+        /* Cor diferenciada para sábado e domingo */
+        .sabado-domingo {
+            background-color: #ffcccc; /* Cor rosa claro para destaque */
+        }
+        /* Fixa apenas a primeira coluna nas linhas de totais */
+        .total-row td:first-child {
+            position: sticky;
+            left: 0;
+            background-color: #fff;
+            z-index: 1;
+            min-width: 250px; /* Alinha com a largura da coluna "Nome Completo" */
+        }
+        .total-row td {
+            text-align: center;
+        }
+    </style>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
+    <script>
+        const tipoTurnos = {
+            'M6': 6, 'T6': 6, 'N2': 12, 'FO': 0, 'FE': 0, 'FD': 0, 'PF': 0,
+            'M5': 5, 'T5': 5, 'M7': 7, 'D2': 12, 'TS': 12, 'N8': 8
+        };
+        let funcionariosData = [];
+
+        // Definições dos turnos por período
+        const turnosMatutino = ['M5', 'M6', 'M7'];
+        const turnosVespertino = ['T5', 'T6', 'TS'];
+        const turnosNoturno = ['N2', 'N8', 'D2'];
+
+        function getDiaSemana(dia, mes, ano) {
+            const diasSemana = ['DOM', 'SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SAB'];
+            const data = new Date(ano, mes - 1, dia); // mes - 1 pois JavaScript usa 0-11
+            return diasSemana[data.getDay()];
+        }
+
+        function filtrarFuncionarios() {
+            const unidadeId = document.getElementById('unidade').value;
+            const cargo = document.getElementById('cargo').value;
+            const mes = document.getElementById('mes').value || {{ mes_atual }};
+            const ano = document.getElementById('ano').value || {{ ano_atual }};
+
+            if (unidadeId) {
+                fetch(`/escalas/api/funcionarios/?unidade=${unidadeId}&cargo=${cargo || ''}`)
+                    .then(response => {
+                        if (!response.ok) throw new Error('Erro na requisição');
+                        return response.json();
+                    })
+                    .then(data => {
+                        funcionariosData = data;
+                        atualizarTabela(mes, ano);
+                    })
+                    .catch(error => {
+                        console.error('Erro ao carregar funcionários:', error);
+                        document.getElementById('funcionarioRows').innerHTML = '<tr><td colspan="37">Erro ao carregar funcionários</td></tr>';
+                    });
+            } else {
+                funcionariosData = [];
+                atualizarTabela(mes, ano);
+            }
+        }
+
+        
+
+        function atualizarTabela(mes, ano) {
+            const tbody = document.getElementById('funcionarioRows');
+            
+            tbody.innerHTML = '';
+            const totalDias = new Date(ano, mes, 0).getDate(); // Número correto de dias
+            const dias = Array.from({length: totalDias}, (_, i) => i + 1);
+
+            // Atualiza o thead dinamicamente para refletir os dias corretos
+            const thead = document.getElementById('escalaTable').getElementsByTagName('thead')[0];
+            const tr = thead.getElementsByTagName('tr')[0];
+            while (tr.cells.length > 6 + 1) { // Remove colunas excedentes (exceto as 6 fixas + total)
+                tr.deleteCell(6);
+            }
+            dias.forEach(dia => {
+                const th = document.createElement('th');
+                th.style.minWidth = '80px';
+                th.style.textAlign = 'center';
+                th.id = `dia_${dia}`;
+                const diaSemana = getDiaSemana(dia, mes, ano);
+                th.innerHTML = `${dia}<br><span class="dia-semana">${diaSemana}</span>`;
+                if (diaSemana === 'SAB' || diaSemana === 'DOM') {
+                    th.style.color = 'red';
+                    th.style="background-color: #fff; color: red; text-align:center; min-Width:80px;"
+                    th.classList.add('sabado-domingo');
+                    th.innerHTML = `${dia}<br><span class="dia-semana" style="color: red;">${diaSemana}</span>`;
+                }
+                tr.insertBefore(th, tr.cells[tr.cells.length - 1]); // Insere antes do "Total C.H. Mensal"
+            });
+
+            if (funcionariosData.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="${6 + totalDias + 1}">Nenhum funcionário encontrado ou selecione uma unidade</td></tr>`;
+                return;
+            }
+
+            // Adiciona linhas dos funcionários
+            funcionariosData.forEach(func => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td style="min-width: 200px;">${func.nome_completo}</td>
+                    <td>${func.siape}</td>
+                    <td>${func.registro_conselho}</td>
+                    <td>${func.cargo}</td>
+                    <td>${func.vinculo}</td>
+                    <td style="text-align: center;">${func.ch_semanal}</td>
+                    ${dias.map(dia => `
+                        <td>
+                            <select name="turno_${func.id}_${dia}" class="form-control form-control-sm" onchange="calcularTotal('${func.id}'); atualizarTotaisPeriodo()">
+                                <option value="">Selecione</option>
+                                ${Object.keys(tipoTurnos).map(codigo => `
+                                    <option value="${codigo}" ${func.preferencias_turno === codigo ? "selected" : ""}>${codigo}</option>
+                                `).join('')}
+                            </select>
+                        </td>
+                    `).join('')}
+                    <td style="min-width: 100px; text-align: center;" id="total_${func.id}">0h</td>
+                `;
+                
+                tbody.appendChild(row);
+                calcularTotal(func.id);
+
+                
+                
+            });
+
+            
+            
+
+            // Adiciona linhas de totais por período
+            const adicionarLinhaTotal = (titulo, turnos) => {
+                const row = document.createElement('tr');
+                row.classList.add('total-row'); // Adiciona classe para estilizar a linha de total
+                row.innerHTML = `
+                    <td style="font-weight: bold; min-width: 250px;text-align: right; background-color: #f7f9fa;">Total ${titulo}</td>
+                    
+                    <td style="background-color: #fff; font-weight: bold; min-width: 50px; background-color: #f7f9fa;"></td>
+                    <td style="background-color: #fff; font-weight: bold; min-width: 50px; background-color: #f7f9fa;"></td>
+                    <td style="background-color: #fff; font-weight: bold; min-width: 50px; background-color: #f7f9fa;"></td>
+                    <td style="background-color: #fff; font-weight: bold; min-width: 50px; background-color: #f7f9fa;"></td>
+                    <td style="background-color: #fff; font-weight: bold; min-width: 50px; background-color: #f7f9fa;"></td>
+                    ${dias.map(dia => {
+                        let total = 0;
+                        funcionariosData.forEach(func => {
+                            const select = document.querySelector(`[name="turno_${func.id}_${dia}"]`);
+                            if (select && turnos.includes(select.value)) {
+                                total++;
+                            }
+                        });
+                        return `<td style="text-align: center;  background-color: #f7f9fa;">${total}</td>`;
+                    }).join('')}
+                    <td></td>
+                `;
+                tbody.appendChild(row);
+            };
+
+            adicionarLinhaTotal('Profissionais Matutino', turnosMatutino);
+            adicionarLinhaTotal('Profissionais Vespertino', turnosVespertino);
+            adicionarLinhaTotal('Profissionais Noturno', turnosNoturno);
+        }
+
+        function calcularTotal(funcId) {
+            let totalHoras = 0;
+            const selects = document.querySelectorAll(`[name^='turno_${funcId}_']`);
+            selects.forEach(select => {
+                const turno = select.value;
+                if (turno && tipoTurnos[turno]) {
+                    totalHoras += tipoTurnos[turno];
+                }
+            });
+            const totalElement = document.getElementById(`total_${funcId}`);
+            if (totalElement) {
+                totalElement.textContent = `${totalHoras}h`;
+            } else {
+                console.error(`Elemento total_${funcId} não encontrado`);
+            }
+        }
+
+        function atualizarTotaisPeriodo() {
+            const tbody = document.getElementById('funcionarioRows');
+            const rows = tbody.getElementsByTagName('tr');
+            let startIndex = funcionariosData.length; // Índice inicial das linhas de totais
+
+            const turnosMatutino = ['M5', 'M6', 'M7'];
+            const turnosVespertino = ['T5', 'T6', 'TS'];
+            const turnosNoturno = ['N2', 'N8', 'D2'];
+
+            const totalDias = new Date(document.getElementById('ano').value || {{ ano_atual }}, document.getElementById('mes').value  || {{ mes_atual }} , 0).getDate();
+            const dias = Array.from({length: totalDias}, (_, i) => i + 1);
+
+            // Atualiza as linhas de totais
+            [turnosMatutino, turnosVespertino, turnosNoturno].forEach((turnos, index) => {
+                const row = rows[startIndex + index];
+                if (row) {
+                    const cells = row.getElementsByTagName('td');
+                    dias.forEach((dia, i) => {
+                        let total = 0;
+                        funcionariosData.forEach(func => {
+                            const select = document.querySelector(`[name="turno_${func.id}_${dia}"]`);
+                            if (select && turnos.includes(select.value)) {
+                                total++;
+                            }
+                        });
+                        cells[i + 6].textContent = total; // +6 para pular as 6 colunas fixas
+                    });
+                }
+            });
+        }
+
+        window.addEventListener('load', () => {
+            const mes = document.getElementById('mes').value || {{ mes_atual }};
+            const ano = document.getElementById('ano').value || {{ ano_atual }};
+            atualizarTabela(mes, ano); // Inicializa a tabela com os dias do mês/ano
+        });
+
+        // Atualiza a tabela quando o mês ou ano muda
+        document.getElementById('mes').addEventListener('change', () => {
+            const mes = document.getElementById('mes').value;
+            const ano = document.getElementById('ano').value || {{ ano_atual }};
+            atualizarTabela(mes, ano);
+        });
+        document.getElementById('ano').addEventListener('change', () => {
+            const mes = document.getElementById('mes').value || {{ mes_atual }};
+            const ano = document.getElementById('ano').value;
+            atualizarTabela(mes, ano);
+        });
+        document.getElementById('unidade').addEventListener('change', () => filtrarFuncionarios());
+        document.getElementById('cargo').addEventListener('change', () => filtrarFuncionarios());
+    </script>
+{% endblock %}

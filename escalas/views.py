@@ -1,15 +1,114 @@
 from django.shortcuts import render, redirect
+<<<<<<< HEAD
 from core.models import Escala, AtribuicaoEscala, Funcionario, TipoTurno, Unidade
+=======
+from core.models import Escala, AtribuicaoEscala, Funcionario, Turno, Unidade
+>>>>>>> ba04dbe (Atualiza template escala com totais por período e cálculo de horas)
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.contrib import messages
 from django.shortcuts import render, get_object_or_404
+<<<<<<< HEAD
 
+=======
+>>>>>>> ba04dbe (Atualiza template escala com totais por período e cálculo de horas)
 from django.http import Http404
 import calendar
 from datetime import datetime, date, timedelta
 
 
+<<<<<<< HEAD
+=======
+
+from django.views.generic import View
+from django.http import JsonResponse
+from django.views.decorators.cache import cache_page
+from datetime import date, datetime
+
+
+class EscalaCreateView(View):
+    template_name = 'escalas/escala_form.html'
+
+    def get(self, request):
+        unidades = Unidade.objects.all()
+        turnos = Turno.objects.all()
+        mes_atual = request.GET.get('mes', date.today().month)
+        ano_atual = request.GET.get('ano', date.today().year)
+        unidade_id = request.GET.get('unidade')
+        cargo = request.GET.get('cargo')
+
+        funcionarios = []
+        if unidade_id:
+            funcionarios = Funcionario.objects.all().order_by('nome_completo')
+            funcionarios = funcionarios.filter(unidade_id=unidade_id)
+        
+        if cargo:
+            funcionarios = funcionarios.filter(cargo=cargo)
+
+        # Gerar dias do mês
+        total_dias = (datetime(int(ano_atual), int(mes_atual) + 1, 1) - datetime(int(ano_atual), int(mes_atual), 1)).days
+        dias = [f"{str(d).zfill(2)}/{str(mes_atual).zfill(2)}" for d in range(1, total_dias + 1)]
+        dias_numericos = [str(d) for d in range(1, total_dias + 1)]  # Para depuração
+
+        context = {
+            'unidades': unidades,
+            'turnos': turnos,
+            'funcionarios': funcionarios,
+            'mes_atual': int(mes_atual),
+            'ano_atual': int(ano_atual),
+            'dias': dias,
+            'dias_numericos': dias_numericos,
+            'cargo': cargo,
+        }
+        return render(request, self.template_name, context)
+
+    def post(self, request):
+        observacoes = request.POST.get('observacoes')
+        unidade_id = request.GET.get('unidade')
+        mes = int(request.GET.get('mes', date.today().month))
+        ano = int(request.GET.get('ano', date.today().year))
+        total_dias = (datetime(ano, mes + 1, 1) - datetime(ano, mes, 1)).days
+
+        # Criar escala
+        escala = Escala.objects.create(
+            data_inicio=date(ano, mes, 1),
+            data_fim=date(ano, mes, total_dias),
+            observacoes=observacoes
+        )
+
+        # Processar alocações
+        for key, value in request.POST.items():
+            if key.startswith('turno_') and value:
+                parts = key.split('_')
+                if len(parts) == 3:
+                    _, func_id, dia_str = parts
+                    dia = int(dia_str)
+                    turno = Turno.objects.get(id=value)
+                    AtribuicaoEscala.objects.create(
+                        escala=escala,
+                        funcionario_id=func_id,
+                        turno=turno,
+                        data=date(ano, mes, dia),
+                        duracao=turno.horas
+                    )
+
+        messages.success(request, 'Escala salva com sucesso!')
+        return redirect('cadastrar_escala')
+
+@cache_page(60 * 15)
+def api_funcionarios(request):
+    unidade_id = request.GET.get('unidade')
+    cargo = request.GET.get('cargo')
+
+    queryset = Funcionario.objects.filter(unidade_id=unidade_id)
+    if cargo:
+        queryset = queryset.filter(cargo=cargo)
+
+    funcionarios = list(queryset.values('id', 'nome_completo', 'siape', 'registro_conselho', 'cargo', 'vinculo', 'ch_semanal'))
+    return JsonResponse(funcionarios, safe=False)
+
+
+>>>>>>> ba04dbe (Atualiza template escala com totais por período e cálculo de horas)
 def gerar_escala(request, unidade_id, mes, ano):
     
     try:
@@ -72,7 +171,11 @@ def gerar_escala(request, unidade_id, mes, ano):
 
 def cadastrar_escala(request):
     unidades = Unidade.objects.all()
+<<<<<<< HEAD
     tipo_turnos = TipoTurno.objects.all()
+=======
+    tipo_turnos = Turno.objects.all().order_by('id')
+>>>>>>> ba04dbe (Atualiza template escala com totais por período e cálculo de horas)
 
     mes_atual = 4  # Abril como exemplo
     ano_atual = 2025
@@ -104,15 +207,26 @@ def cadastrar_escala(request):
                 turno_codigo = request.POST.get(f'turno_{func.id}_{dia}')
 
                 if turno_codigo:
+<<<<<<< HEAD
                     tipo_turno = TipoTurno.objects.get(codigo=turno_codigo)
+=======
+                    tipo_turno = Turno.objects.get(sigla=turno_codigo)
+>>>>>>> ba04dbe (Atualiza template escala com totais por período e cálculo de horas)
                     AtribuicaoEscala.objects.create(escala=escala, funcionario=func, dia=dia, tipo_turno=tipo_turno, ch_mensal=0)
 
         messages.success(request, "Escala cadastrada com sucesso!")
         return redirect('escala_detalhe', unidade_id=unidade_id, mes=mes, ano=ano)
+<<<<<<< HEAD
 
     return render(request, 'escalas/cadastrar_escala.html', {
         'unidades': unidades,
         'tipo_turnos': tipo_turnos,
+=======
+    
+    return render(request, 'escalas/cadastrar_escala.html', {
+        'unidades': unidades,
+        'turnos': tipo_turnos,
+>>>>>>> ba04dbe (Atualiza template escala com totais por período e cálculo de horas)
         'mes_atual': mes_atual,
         'ano_atual': ano_atual,
         'dias': dias,
@@ -191,6 +305,10 @@ def obter_dias_mes(ano, mes):
 
 @csrf_exempt
 def get_funcionarios(request):
+<<<<<<< HEAD
+=======
+
+>>>>>>> ba04dbe (Atualiza template escala com totais por período e cálculo de horas)
     unidade_id = request.GET.get('unidade')
     cargo = request.GET.get('cargo')
     if not unidade_id:
@@ -200,8 +318,11 @@ def get_funcionarios(request):
     if cargo:
         funcionarios = funcionarios.filter(cargo=cargo)
 
+<<<<<<< HEAD
     
     
+=======
+>>>>>>> ba04dbe (Atualiza template escala com totais por período e cálculo de horas)
     data = [{
         'id': f.id,
         'nome_completo': f.nome_completo,
@@ -215,12 +336,15 @@ def get_funcionarios(request):
         
     return JsonResponse(data, safe=False)
 
+<<<<<<< HEAD
 from datetime import date
 import calendar
 from django.shortcuts import render
 from core.models import AtribuicaoEscala, Escala
 from core.models import Unidade  # ajuste se necessário
 
+=======
+>>>>>>> ba04dbe (Atualiza template escala com totais por período e cálculo de horas)
 def cobertura1(request):
     import datetime
 
